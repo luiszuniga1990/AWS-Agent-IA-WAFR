@@ -1,0 +1,32 @@
+{
+  "name": "wafr-scan-portal",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "shared",
+    "backend",
+    "frontend",
+    "infra"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,json,md}\"",
+    "test": "jest --config jest.config.ts",
+    "test:watch": "jest --config jest.config.ts --watch"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "aws-sdk-client-mock": "^4.0.0",
+    "eslint": "^8.57.0",
+    "fast-check": "^3.19.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.2.0",
+    "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
+  }
+}
