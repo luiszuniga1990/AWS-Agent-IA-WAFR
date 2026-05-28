@@ -40,7 +40,7 @@ describe('uploadCredentials', () => {
   });
 
   it('returns 400 when body is missing fileBase64', async () => {
-    const event = makeEvent({ body: JSON.stringify({ fileName: 'creds.xlsx' }) });
+    const event = makeEvent({ body: JSON.stringify({ fileName: 'creds.csv' }) });
     ddbMock.on(QueryCommand).resolves({ Items: [{ scanId: 'scan-123', userId: 'user-1', awsRegion: 'us-east-1' }] });
 
     const result = await uploadCredentials(event);
@@ -49,7 +49,7 @@ describe('uploadCredentials', () => {
 
   it('returns 404 when scan is not found', async () => {
     const event = makeEvent({
-      body: JSON.stringify({ fileBase64: 'abc', fileName: 'creds.xlsx' }),
+      body: JSON.stringify({ fileBase64: 'abc', fileName: 'creds.csv' }),
     });
     ddbMock.on(QueryCommand).resolves({ Items: [] });
 
@@ -59,14 +59,14 @@ describe('uploadCredentials', () => {
 
   it('returns 400 when file format is invalid', async () => {
     const event = makeEvent({
-      body: JSON.stringify({ fileBase64: 'abc', fileName: 'creds.csv' }),
+      body: JSON.stringify({ fileBase64: 'abc', fileName: 'creds.xlsx' }),
     });
     ddbMock.on(QueryCommand).resolves({ Items: [{ scanId: 'scan-123', userId: 'user-1', awsRegion: 'us-east-1' }] });
 
     const result = await uploadCredentials(event);
     expect(result.statusCode).toBe(400);
     const body = JSON.parse(result.body);
-    expect(body.message).toContain('.xlsx');
+    expect(body.message).toContain('.csv');
   });
 });
 

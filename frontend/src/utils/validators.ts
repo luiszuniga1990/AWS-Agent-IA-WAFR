@@ -2,7 +2,7 @@ import type { ScanFormData } from '@wafr-portal/shared';
 import { isValidRegion } from './aws-regions';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const XLSX_EXTENSION = '.xlsx';
+const CSV_EXTENSION = '.csv';
 
 export function validateEmail(email: string): boolean {
   return EMAIL_REGEX.test(email);
@@ -49,7 +49,7 @@ export function validateScanForm(
   return Object.keys(errors).length > 0 ? errors : null;
 }
 
-/** Validates that a filename has the .xlsx extension (case-insensitive). */
-export function validateXlsxFile(fileName: string): boolean {
-  return fileName.toLowerCase().endsWith(XLSX_EXTENSION);
+/** Validates that a filename has the .csv extension (case-insensitive). */
+export function validateCsvFile(fileName: string): boolean {
+  return fileName.toLowerCase().endsWith(CSV_EXTENSION);
 }

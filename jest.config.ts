@@ -3,7 +3,7 @@ import type { Config } from 'jest';
 const config: Config = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/backend/src'],
+  roots: ['<rootDir>/backend/src', '<rootDir>/infra/src'],
   moduleNameMapper: {
     '^@wafr-portal/shared$': '<rootDir>/shared/src/index.ts',
   },

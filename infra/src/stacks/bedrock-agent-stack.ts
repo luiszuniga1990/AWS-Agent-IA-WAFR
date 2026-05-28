@@ -88,7 +88,6 @@ export class BedrockAgentStack extends cdk.Stack {
         'and send them via email. Always follow the validation sequence: connection → permissions → prerequisites → assessment.',
       ].join(' '),
       actionGroups: [
-        // Action Group 1: Credential Validation
         {
           actionGroupName: 'CredentialValidation',
           description:
@@ -105,9 +104,10 @@ export class BedrockAgentStack extends cdk.Stack {
                   post: {
                     operationId: 'validateCredentials',
                     description: 'Validate AWS credentials from uploaded Excel file',
-                    parameters: [
-                      { name: 'scanId', in: 'query', required: true, schema: { type: 'string' } },
-                    ],
+                    requestBody: {
+                      required: true,
+                      content: { 'application/json': { schema: { type: 'object', properties: { scanId: { type: 'string', description: 'The scan identifier' } }, required: ['scanId'] } } },
+                    },
                     responses: { '200': { description: 'Validation result' } },
                   },
                 },
@@ -115,18 +115,19 @@ export class BedrockAgentStack extends cdk.Stack {
                   post: {
                     operationId: 'validatePermissions',
                     description: 'Validate IAM permissions are read-only with minimum required policies',
-                    parameters: [
-                      { name: 'scanId', in: 'query', required: true, schema: { type: 'string' } },
-                    ],
+                    requestBody: {
+                      required: true,
+                      content: { 'application/json': { schema: { type: 'object', properties: { scanId: { type: 'string', description: 'The scan identifier' } }, required: ['scanId'] } } },
+                    },
                     responses: { '200': { description: 'Permission validation result' } },
                   },
                 },
-                '/generate-iam-policy': {
+                '/generate-iam-policy/{scanId}': {
                   get: {
                     operationId: 'generateIamPolicy',
                     description: 'Generate minimum IAM policy JSON for download',
                     parameters: [
-                      { name: 'scanId', in: 'query', required: true, schema: { type: 'string' } },
+                      { name: 'scanId', in: 'path', required: true, schema: { type: 'string' }, description: 'The scan identifier' },
                     ],
                     responses: { '200': { description: 'IAM policy document' } },
                   },
@@ -135,7 +136,6 @@ export class BedrockAgentStack extends cdk.Stack {
             }),
           },
         },
-        // Action Group 2: Prerequisite Checking
         {
           actionGroupName: 'PrerequisiteChecking',
           description:
@@ -152,9 +152,10 @@ export class BedrockAgentStack extends cdk.Stack {
                   post: {
                     operationId: 'checkPrerequisites',
                     description: 'Check AWS Config and Security Hub prerequisites',
-                    parameters: [
-                      { name: 'scanId', in: 'query', required: true, schema: { type: 'string' } },
-                    ],
+                    requestBody: {
+                      required: true,
+                      content: { 'application/json': { schema: { type: 'object', properties: { scanId: { type: 'string', description: 'The scan identifier' } }, required: ['scanId'] } } },
+                    },
                     responses: { '200': { description: 'Prerequisite check result' } },
                   },
                 },
@@ -162,7 +163,6 @@ export class BedrockAgentStack extends cdk.Stack {
             }),
           },
         },
-        // Action Group 3: Assessment Orchestration (Prowler + WA Tool)
         {
           actionGroupName: 'AssessmentOrchestration',
           description:
@@ -179,18 +179,19 @@ export class BedrockAgentStack extends cdk.Stack {
                   post: {
                     operationId: 'startAssessment',
                     description: 'Start a WAFR assessment using Prowler and WA Tool',
-                    parameters: [
-                      { name: 'scanId', in: 'query', required: true, schema: { type: 'string' } },
-                    ],
+                    requestBody: {
+                      required: true,
+                      content: { 'application/json': { schema: { type: 'object', properties: { scanId: { type: 'string', description: 'The scan identifier' } }, required: ['scanId'] } } },
+                    },
                     responses: { '200': { description: 'Assessment started' } },
                   },
                 },
-                '/get-assessment-status': {
+                '/get-assessment-status/{assessmentId}': {
                   get: {
                     operationId: 'getAssessmentStatus',
                     description: 'Get the current status of a running assessment',
                     parameters: [
-                      { name: 'assessmentId', in: 'query', required: true, schema: { type: 'string' } },
+                      { name: 'assessmentId', in: 'path', required: true, schema: { type: 'string' }, description: 'The assessment identifier' },
                     ],
                     responses: { '200': { description: 'Assessment status' } },
                   },
@@ -199,7 +200,6 @@ export class BedrockAgentStack extends cdk.Stack {
             }),
           },
         },
-        // Action Group 4: PDF Generation
         {
           actionGroupName: 'PDFGeneration',
           description:
@@ -216,10 +216,10 @@ export class BedrockAgentStack extends cdk.Stack {
                   post: {
                     operationId: 'generatePdf',
                     description: 'Generate a WAFR PDF report (ready or detail)',
-                    parameters: [
-                      { name: 'assessmentId', in: 'query', required: true, schema: { type: 'string' } },
-                      { name: 'type', in: 'query', required: true, schema: { type: 'string', enum: ['ready', 'detail'] } },
-                    ],
+                    requestBody: {
+                      required: true,
+                      content: { 'application/json': { schema: { type: 'object', properties: { assessmentId: { type: 'string', description: 'The assessment identifier' }, type: { type: 'string', enum: ['ready', 'detail'], description: 'Report type' } }, required: ['assessmentId', 'type'] } } },
+                    },
                     responses: { '200': { description: 'PDF generated' } },
                   },
                 },
@@ -227,7 +227,6 @@ export class BedrockAgentStack extends cdk.Stack {
             }),
           },
         },
-        // Action Group 5: Email Delivery
         {
           actionGroupName: 'EmailDelivery',
           description:
@@ -244,9 +243,10 @@ export class BedrockAgentStack extends cdk.Stack {
                   post: {
                     operationId: 'sendEmails',
                     description: 'Send WAFR report emails (Ready to VDM, Detail to tech team)',
-                    parameters: [
-                      { name: 'assessmentId', in: 'query', required: true, schema: { type: 'string' } },
-                    ],
+                    requestBody: {
+                      required: true,
+                      content: { 'application/json': { schema: { type: 'object', properties: { assessmentId: { type: 'string', description: 'The assessment identifier' } }, required: ['assessmentId'] } } },
+                    },
                     responses: { '200': { description: 'Emails sent' } },
                   },
                 },
@@ -258,10 +258,14 @@ export class BedrockAgentStack extends cdk.Stack {
     });
 
     // Grant Bedrock permission to invoke each Lambda
-    for (const arn of lambdaArns) {
-      const fn = lambda.Function.fromFunctionArn(this, `Import-${arn.split(':').pop()}`, arn);
+    const fnNames = ['CredentialValidator', 'PrerequisiteChecker', 'AssessmentOrchestrator', 'PdfGenerator', 'EmailSender'];
+    lambdaArns.forEach((arn, i) => {
+      const fn = lambda.Function.fromFunctionAttributes(this, `Import-${fnNames[i]}`, {
+        functionArn: arn,
+        sameEnvironment: true,
+      });
       fn.grantInvoke(agentRole);
-    }
+    });
 
     this.agentId = agent.attrAgentId;
 

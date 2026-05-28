@@ -36,3 +36,5 @@ npm-debug.log*
 # Temporary files
 tmp/
 temp/
+frontend/.env
+infra/cdk.context.json

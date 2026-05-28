@@ -1,6 +1,7 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import type { GetPrerequisitesResponse } from '@wafr-portal/shared';
 import { getPrerequisiteStatus } from '../services/prerequisite-checker';
+import { extractCredentials } from '../services/credential-extractor';
 import { docClient, SCANS_TABLE } from '../utils/dynamodb';
 import { QueryCommand } from '@aws-sdk/lib-dynamodb';
 
@@ -61,15 +62,22 @@ export async function checkPrerequisites(
     return jsonResponse(404, { message: 'Scan not found' });
   }
 
-  // Parse credentials from request body
+  // Parse credentials from request body (direct or from CSV file)
   let accessKeyId: string;
   let secretAccessKey: string;
   try {
     const body = JSON.parse(event.body ?? '{}');
-    accessKeyId = body.accessKeyId;
-    secretAccessKey = body.secretAccessKey;
-  } catch {
-    return jsonResponse(400, { message: 'Invalid JSON body' });
+    if (body.fileBase64 && body.fileName) {
+      const creds = extractCredentials(body.fileBase64, body.fileName);
+      accessKeyId = creds.accessKeyId;
+      secretAccessKey = creds.secretAccessKey;
+    } else {
+      accessKeyId = body.accessKeyId;
+      secretAccessKey = body.secretAccessKey;
+    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Invalid JSON body';
+    return jsonResponse(400, { message });
   }
 
   if (!accessKeyId || !secretAccessKey) {

@@ -22,29 +22,12 @@ export class ProwlerAlbStack extends cdk.Stack {
 
     const { vpc, albSg, apiService, uiService } = props;
 
-    // Certificate ARN from context (pass via -c certificateArn=arn:...)
-    const certificateArn = this.node.tryGetContext('certificateArn') as string;
-    if (!certificateArn) {
-      throw new Error('Context variable "certificateArn" is required. Pass it via -c certificateArn=<ARN>');
-    }
-    const certificate = acm.Certificate.fromCertificateArn(this, 'Certificate', certificateArn);
-
     // Application Load Balancer in public subnets
     this.alb = new elbv2.ApplicationLoadBalancer(this, 'ProwlerAlb', {
       vpc,
       internetFacing: true,
       securityGroup: albSg,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
-    });
-
-    // HTTP listener → redirect to HTTPS
-    this.alb.addListener('HttpListener', {
-      port: 80,
-      defaultAction: elbv2.ListenerAction.redirect({
-        protocol: 'HTTPS',
-        port: '443',
-        permanent: true,
-      }),
     });
 
     // Target group: Prowler API (port 8080)
@@ -69,7 +52,7 @@ export class ProwlerAlbStack extends cdk.Stack {
       protocol: elbv2.ApplicationProtocol.HTTP,
       targets: [uiService],
       healthCheck: {
-        path: '/',
+        path: '/api/auth/session',
         interval: cdk.Duration.seconds(30),
         timeout: cdk.Duration.seconds(10),
         healthyThresholdCount: 2,
@@ -77,23 +60,54 @@ export class ProwlerAlbStack extends cdk.Stack {
       },
     });
 
-    // HTTPS listener with routing rules
-    const httpsListener = this.alb.addListener('HttpsListener', {
-      port: 443,
-      certificates: [certificate],
-      defaultTargetGroups: [uiTargetGroup],
-    });
+    // Optional HTTPS: use certificate if a valid certificateArn is provided
+    const certificateArn = this.node.tryGetContext('certificateArn') as string | undefined;
 
-    // Route /api/* to prowler-api target group
-    httpsListener.addTargetGroups('ProwlerApiRule', {
-      targetGroups: [apiTargetGroup],
-      priority: 10,
-      conditions: [elbv2.ListenerCondition.pathPatterns(['/api/*'])],
-    });
+    if (certificateArn) {
+      const certificate = acm.Certificate.fromCertificateArn(this, 'Certificate', certificateArn);
+
+      // HTTP listener → redirect to HTTPS
+      this.alb.addListener('HttpListener', {
+        port: 80,
+        defaultAction: elbv2.ListenerAction.redirect({
+          protocol: 'HTTPS',
+          port: '443',
+          permanent: true,
+        }),
+      });
+
+      // HTTPS listener with routing rules
+      const httpsListener = this.alb.addListener('HttpsListener', {
+        port: 443,
+        certificates: [certificate],
+        defaultTargetGroups: [uiTargetGroup],
+      });
+
+      httpsListener.addTargetGroups('ProwlerApiRule', {
+        targetGroups: [apiTargetGroup],
+        priority: 10,
+        conditions: [elbv2.ListenerCondition.pathPatterns(['/api/*'])],
+      });
+
+      this.prowlerApiUrl = `https://${this.alb.loadBalancerDnsName}/api`;
+    } else {
+      // HTTP-only mode (no valid certificate available)
+      const httpListener = this.alb.addListener('HttpListener', {
+        port: 80,
+        defaultTargetGroups: [uiTargetGroup],
+      });
+
+      httpListener.addTargetGroups('ProwlerApiRule', {
+        targetGroups: [apiTargetGroup],
+        priority: 10,
+        conditions: [elbv2.ListenerCondition.pathPatterns(['/api/*'])],
+      });
+
+      this.prowlerApiUrl = `http://${this.alb.loadBalancerDnsName}/api`;
+    }
 
     // Store DNS values
     this.albDnsName = this.alb.loadBalancerDnsName;
-    this.prowlerApiUrl = `https://${this.albDnsName}/api`;
 
     // Outputs
     new cdk.CfnOutput(this, 'AlbDnsName', {

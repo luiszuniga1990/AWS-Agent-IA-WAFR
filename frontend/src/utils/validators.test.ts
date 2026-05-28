@@ -1,6 +1,6 @@
 import { validateEmail, validateRegion, validateScanForm } from './validators';
 import { VALID_AWS_REGIONS } from './aws-regions';
-import { validateXlsxFile } from './validators';
+import { validateCsvFile } from './validators';
 
 describe('validateEmail', () => {
   it('accepts valid email addresses', () => {
@@ -118,19 +118,19 @@ describe('validateScanForm', () => {
   });
 });
 
-describe('validateXlsxFile', () => {
-  it('accepts .xlsx files', () => {
-    expect(validateXlsxFile('credentials.xlsx')).toBe(true);
-    expect(validateXlsxFile('my-file.XLSX')).toBe(true);
-    expect(validateXlsxFile('CREDS.Xlsx')).toBe(true);
+describe('validateCsvFile', () => {
+  it('accepts .csv files', () => {
+    expect(validateCsvFile('credentials.csv')).toBe(true);
+    expect(validateCsvFile('my-file.CSV')).toBe(true);
+    expect(validateCsvFile('CREDS.Csv')).toBe(true);
   });
 
-  it('rejects non-.xlsx files', () => {
-    expect(validateXlsxFile('file.csv')).toBe(false);
-    expect(validateXlsxFile('file.xls')).toBe(false);
-    expect(validateXlsxFile('file.txt')).toBe(false);
-    expect(validateXlsxFile('file.xlsx.exe')).toBe(false);
-    expect(validateXlsxFile('')).toBe(false);
-    expect(validateXlsxFile('noextension')).toBe(false);
+  it('rejects non-.csv files', () => {
+    expect(validateCsvFile('file.xlsx')).toBe(false);
+    expect(validateCsvFile('file.xls')).toBe(false);
+    expect(validateCsvFile('file.txt')).toBe(false);
+    expect(validateCsvFile('file.csv.exe')).toBe(false);
+    expect(validateCsvFile('')).toBe(false);
+    expect(validateCsvFile('noextension')).toBe(false);
   });
 });

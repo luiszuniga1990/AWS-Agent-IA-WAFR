@@ -11,7 +11,7 @@ import type {
 } from '@wafr-portal/shared';
 import axios from 'axios';
 import api from '../services/api';
-import { validateXlsxFile } from '../utils/validators';
+import { validateCsvFile } from '../utils/validators';
 
 // --- Sub-step states within the credential flow ---
 type CredentialSubStep =
@@ -80,8 +80,8 @@ export default function CredentialStep({
     const file = e.target.files?.[0] ?? null;
 
     if (file) {
-      if (!validateXlsxFile(file.name)) {
-        setFileError('Solo se aceptan archivos con extensión .xlsx');
+      if (!validateCsvFile(file.name)) {
+        setFileError('Solo se aceptan archivos con extensión .csv');
         setSelectedFile(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
         return;
@@ -177,8 +177,15 @@ export default function CredentialStep({
     setApiError('');
 
     try {
-      const { data } = await api.get<GetPrerequisitesResponse>(
+      let body: Record<string, string> = {};
+      if (selectedFile) {
+        const fileBase64 = await fileToBase64(selectedFile);
+        body = { fileBase64, fileName: selectedFile.name };
+      }
+
+      const { data } = await api.post<GetPrerequisitesResponse>(
         `/scans/${scanId}/prerequisites`,
+        body,
       );
 
       setPrerequisiteResult(data.prerequisiteResult);
@@ -297,13 +304,13 @@ export default function CredentialStep({
             htmlFor="credential-file"
             style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: 14 }}
           >
-            Archivo Excel (.xlsx)
+            Archivo CSV (.csv)
           </label>
           <input
             ref={fileInputRef}
             id="credential-file"
             type="file"
-            accept=".xlsx"
+            accept=".csv"
             aria-describedby={fileError ? 'file-error' : undefined}
             aria-invalid={fileError ? 'true' : undefined}
             onChange={handleFileChange}
@@ -639,6 +646,82 @@ export default function CredentialStep({
               >
                 Reintentar validación
               </button>
+
+              <details style={{ marginTop: 16, fontSize: 13 }}>
+                <summary style={{ cursor: 'pointer', color: '#0073bb', fontWeight: 500 }}>
+                  💡 Política IAM sugerida para habilitar los servicios requeridos
+                </summary>
+                <div style={{ marginTop: 8, padding: 12, backgroundColor: '#f5f5f5', borderRadius: 4, border: '1px solid #ddd' }}>
+                  <p style={{ margin: '0 0 8px', color: '#333' }}>
+                    Aplique esta política en la cuenta del cliente para habilitar AWS Config, Security Hub y los permisos necesarios para el escaneo WAFR:
+                  </p>
+                  <pre style={{ margin: 0, padding: 10, backgroundColor: '#1e1e1e', color: '#d4d4d4', borderRadius: 4, fontSize: 11, overflowX: 'auto', whiteSpace: 'pre-wrap' }}>
+{`{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "EnableAWSConfig",
+      "Effect": "Allow",
+      "Action": [
+        "config:PutConfigurationRecorder",
+        "config:PutDeliveryChannel",
+        "config:StartConfigurationRecorder",
+        "config:DescribeConfigurationRecorders",
+        "config:DescribeDeliveryChannels",
+        "config:DescribeConfigurationRecorderStatus"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "EnableSecurityHub",
+      "Effect": "Allow",
+      "Action": [
+        "securityhub:EnableSecurityHub",
+        "securityhub:BatchEnableStandards",
+        "securityhub:GetEnabledStandards",
+        "securityhub:DescribeHub",
+        "securityhub:DescribeStandards"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "SecurityAuditReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "account:Get*",
+        "cloudtrail:GetInsightSelectors",
+        "ec2:GetEbsEncryptionByDefault",
+        "s3:GetAccountPublicAccessBlock",
+        "securityhub:GetFindings",
+        "securityhub:BatchImportFindings",
+        "wellarchitected:List*",
+        "wellarchitected:CreateWorkload",
+        "wellarchitected:UpdateAnswer",
+        "wellarchitected:AssociateLenses"
+      ],
+      "Resource": "*"
+    }
+  ]
+}`}
+                  </pre>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(JSON.stringify({
+                        Version: '2012-10-17',
+                        Statement: [
+                          { Sid: 'EnableAWSConfig', Effect: 'Allow', Action: ['config:PutConfigurationRecorder','config:PutDeliveryChannel','config:StartConfigurationRecorder','config:DescribeConfigurationRecorders','config:DescribeDeliveryChannels','config:DescribeConfigurationRecorderStatus'], Resource: '*' },
+                          { Sid: 'EnableSecurityHub', Effect: 'Allow', Action: ['securityhub:EnableSecurityHub','securityhub:BatchEnableStandards','securityhub:GetEnabledStandards','securityhub:DescribeHub','securityhub:DescribeStandards'], Resource: '*' },
+                          { Sid: 'SecurityAuditReadOnly', Effect: 'Allow', Action: ['account:Get*','cloudtrail:GetInsightSelectors','ec2:GetEbsEncryptionByDefault','s3:GetAccountPublicAccessBlock','securityhub:GetFindings','securityhub:BatchImportFindings','wellarchitected:List*','wellarchitected:CreateWorkload','wellarchitected:UpdateAnswer','wellarchitected:AssociateLenses'], Resource: '*' }
+                        ]
+                      }, null, 2));
+                    }}
+                    style={{ marginTop: 8, padding: '4px 12px', fontSize: 12, cursor: 'pointer', backgroundColor: '#ff9900', color: '#fff', border: 'none', borderRadius: 4 }}
+                  >
+                    📋 Copiar política
+                  </button>
+                </div>
+              </details>
             </div>
           )}
         </section>
